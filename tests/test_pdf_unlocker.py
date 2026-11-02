@@ -64,18 +64,40 @@ def test_unlock_and_export_incorrect_password(sample_protected_pdf: Path, tmp_pa
     assert not output_target.exists()
 
 
-def test_unlock_and_export_permission_denied(
+def test_unlock_and_export_permission_denied_in_strict_mode(
     sample_restricted_permissions_pdf: Path, tmp_path: Path
 ) -> None:
-    """Document with restricted permissions raises PermissionDeniedError when user password used."""
+    """In strict mode, document with restricted permissions raises PermissionDeniedError."""
     output_target = tmp_path / "unlocked_restricted.pdf"
 
-    # 'userpass' opens the doc, but modify permission is denied
+    # 'userpass' opens the doc, but modify permission is denied in strict mode
     with pytest.raises(PermissionDeniedError, match="forbid modifying or removing"):
-        unlock_and_export(sample_restricted_permissions_pdf, output_target, "userpass")
+        unlock_and_export(
+            sample_restricted_permissions_pdf,
+            output_target,
+            "userpass",
+            strict_permissions=True,
+        )
 
     # Output file was not created
     assert not output_target.exists()
+
+
+def test_unlock_and_export_user_password_succeeds_by_default(
+    sample_restricted_permissions_pdf: Path, tmp_path: Path
+) -> None:
+    """By default, opening password authorizes unencrypted export for personal documents."""
+    output_target = tmp_path / "unlocked_by_user.pdf"
+
+    # In default mode, 'userpass' successfully decrypts and saves the file
+    page_count = unlock_and_export(sample_restricted_permissions_pdf, output_target, "userpass")
+
+    assert page_count == 1
+    assert output_target.exists()
+
+    with pymupdf.open(output_target) as doc:
+        assert doc.needs_pass == 0
+        assert not doc.is_encrypted
 
 
 def test_unlock_and_export_permission_authorized_with_owner_pass(

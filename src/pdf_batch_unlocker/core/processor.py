@@ -37,8 +37,13 @@ class BatchCallbacks:
 class BatchProcessor:
     """Executes sequential batch unlocking of PDF documents."""
 
-    def __init__(self, callbacks: BatchCallbacks | None = None) -> None:
+    def __init__(
+        self,
+        callbacks: BatchCallbacks | None = None,
+        strict_permissions: bool = False,
+    ) -> None:
         self.callbacks = callbacks or BatchCallbacks()
+        self.strict_permissions = strict_permissions
 
     def process_file(
         self,
@@ -187,7 +192,12 @@ class BatchProcessor:
             attempts += 1
 
             try:
-                unlock_and_export(source_path, target_path, password)
+                unlock_and_export(
+                    source_path,
+                    target_path,
+                    password,
+                    strict_permissions=self.strict_permissions,
+                )
                 # Success!
                 duration = time.perf_counter() - start_time
                 if self.callbacks.on_file_status:

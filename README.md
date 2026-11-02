@@ -289,8 +289,9 @@ The application handles standard PDF security structures based on ISO 32000-1 sp
 | PDF Configuration | Application Behavior | Resulting Status |
 |---|---|---|
 | **Unprotected PDF** | Detected via `needs_pass == 0`. No password requested. | `SKIPPED` |
-| **User Password (Standard)** | User password opens document; permissions permit modifications. | `SUCCESS` |
-| **Owner-Restricted PDF (User Password Provided)** | Password opens document for viewing, but owner permissions forbid modification (`PDF_PERM_MODIFY` bit not set). Decryption refused. | `FAILED` (`PERMISSION_DENIED`) |
+| **Password-Protected PDF (Standard)** | Supplied opening password decrypts and unlocks the file. | `SUCCESS` |
+| **Owner-Restricted PDF (Default Mode)** | Opening password authorizes export of an unencrypted copy for personal document owners. | `SUCCESS` |
+| **Owner-Restricted PDF (Strict Mode Enabled)** | User password opens document for viewing, but owner permissions forbid modification (`PDF_PERM_MODIFY` bit not set). Decryption refused. | `FAILED` (`PERMISSION_DENIED`) |
 | **Owner-Restricted PDF (Owner Password Provided)** | Owner password grants full authority (`doc.permissions == -4` or `auth_code >= 4`). Decryption permitted. | `SUCCESS` |
 | **Corrupted / Invalid File** | File cannot be opened as a valid PDF. | `FAILED` (`INVALID_PDF`) |
 | **Unsupported Encryption** | Proprietary or unsupported encryption handler. | `FAILED` (`UNSUPPORTED_ENCRYPTION`) |

@@ -80,41 +80,47 @@ def check_opening_password_required(pdf_path: Path) -> bool:
 
 
 def check_decryption_authorization(
-    doc: pymupdf.Document, auth_code: int
+    doc: pymupdf.Document,
+    auth_code: int,
+    strict_permissions: bool = False,
 ) -> tuple[bool, str | None]:
     """Determine whether the authenticated document allows producing an unencrypted copy.
 
-    Respects PDF permissions and owner restrictions. Owner authentication (auth_code >= 4)
-    grants full authority. User authentication (auth_code == 2) is verified against
-    the document's modification permissions.
+    When strict_permissions is False (default), any valid opening password (user or owner)
+    authorizes producing an unencrypted copy. When strict_permissions is True,
+    owner-level modification restrictions are enforced.
 
     Args:
         doc: Authenticated PyMuPDF Document.
         auth_code: Return code from PyMuPDF authenticate().
+        strict_permissions: If True, enforce strict owner-level modification permissions.
 
     Returns:
         Tuple of (authorized, rejection_reason).
     """
-    # Owner credentials grant full rights
+    if auth_code <= 0:
+        return False, "Document authentication failed."
+
+    # Owner credentials always grant full rights
     if auth_code >= 4:
         logger.debug("Document authenticated with owner-level authority.")
         return True, None
 
-    # User credentials: verify if modification is permitted
-    perms = doc.permissions
-    has_modify = bool(perms & pymupdf.PDF_PERM_MODIFY)
+    # User credentials
+    if strict_permissions:
+        perms = doc.permissions
+        has_modify = bool(perms & pymupdf.PDF_PERM_MODIFY)
+        if not has_modify:
+            logger.warning(
+                "User credentials accepted, but document permissions forbid modifying or removing security (perms=%d).",
+                perms,
+            )
+            return False, (
+                "Password opened the document as user, but owner permissions "
+                "forbid modifying or removing document restrictions."
+            )
 
-    if not has_modify:
-        logger.warning(
-            "User credentials accepted, but document permissions forbid modifying or removing security (perms=%d).",
-            perms,
-        )
-        return False, (
-            "Password opened the document as user, but owner permissions "
-            "forbid modifying or removing document restrictions."
-        )
-
-    logger.debug("User credentials accepted and document permissions allow modification.")
+    logger.debug("User credentials accepted; decryption authorized.")
     return True, None
 
 
@@ -173,6 +179,7 @@ def unlock_and_export(
     source_path: Path,
     target_path: Path,
     password: str,
+    strict_permissions: bool = False,
 ) -> int:
     """Unlock a password-protected PDF and save an unencrypted copy.
 
@@ -183,6 +190,7 @@ def unlock_and_export(
         source_path: Path to the original protected PDF.
         target_path: Desired final output path.
         password: The authenticated password.
+        strict_permissions: If True, enforce strict owner-level modification permissions.
 
     Returns:
         The verified page count of the generated document.
@@ -204,7 +212,9 @@ def unlock_and_export(
                     ErrorCategory.INCORRECT_PASSWORD,
                 )
 
-            authorized, reason = check_decryption_authorization(doc, auth_code)
+            authorized, reason = check_decryption_authorization(
+                doc, auth_code, strict_permissions=strict_permissions
+            )
             if not authorized:
                 raise PermissionDeniedError(
                     reason or "Operation not permitted by document security policy."
