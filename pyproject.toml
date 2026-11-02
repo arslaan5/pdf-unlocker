@@ -1,7 +1,35 @@
 [project]
 name = "pdf-unlocker"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "Batch process and unlock password-protected PDF files interactively."
 readme = "README.md"
-requires-python = ">=3.14.10"
-dependencies = []
+requires-python = "==3.14.10"
+dependencies = [
+    "pymupdf>=2.0",
+    "rich>=15.0.0",
+]
+
+[project.scripts]
+pdf-unlocker = "pdf_batch_unlocker.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pdf_batch_unlocker"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
